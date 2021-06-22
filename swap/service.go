@@ -89,7 +89,7 @@ func (s *Service) FindSwapRoutePathsByGraph(pools []models.LiquidityPool, fromCo
 
 	var result [][]goraph.ID
 	for _, path := range paths {
-		if len(path) > depth+1 || len(path) == 0 {
+		if len(path) > depth || len(path) == 0 {
 			break
 		}
 
@@ -125,7 +125,7 @@ func (s *Service) GetPossiblePaths(pools []models.LiquidityPool, fromCoinId, toC
 				if i == 0 {
 					continue
 				}
-				
+
 				firstCoinId, secondCoinId := path[i-1].(uint64), path[i].(uint64)
 				pchan := make(chan models.LiquidityPool)
 				for _, lp := range pools {
