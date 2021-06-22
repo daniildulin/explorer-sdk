@@ -16,3 +16,8 @@ func computePrice(reserve1, reserve2 string) *big.Float {
 		helpers.Pip2Bip(helpers.StringToBigInt(reserve2)),
 	)
 }
+
+func str2bigint(string string) *big.Int {
+	bInt, _ := new(big.Int).SetString(string, 10)
+	return bInt
+}

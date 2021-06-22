@@ -6,6 +6,7 @@ import (
 	"github.com/go-pg/pg/v10"
 	"github.com/starwander/goraph"
 	"math/big"
+	"sync"
 )
 
 type Service struct {
@@ -100,4 +101,60 @@ func (s *Service) FindSwapRoutePathsByGraph(pools []models.LiquidityPool, fromCo
 	}
 
 	return result, nil
+}
+
+func (s *Service) GetPossiblePaths(pools []models.LiquidityPool, fromCoinId, toCoinId uint64, depth int, topN int) ([][]Pair, error) {
+	paths, err := s.FindSwapRoutePathsByGraph(pools, fromCoinId, toCoinId, depth, topN)
+	if err != nil {
+		return nil, err
+	}
+
+	pairs := make([][]Pair, 0)
+	wg := &sync.WaitGroup{}
+	for _, path := range paths {
+		if len(path) == 0 {
+			break
+		}
+
+		wg.Add(1)
+		go func(path []goraph.ID, wg *sync.WaitGroup) {
+			defer wg.Done()
+
+			currentPairs := make([]Pair, 0)
+			for i := range path {
+				if i == 0 {
+					continue
+				}
+				
+				firstCoinId, secondCoinId := path[i-1].(uint64), path[i].(uint64)
+				pchan := make(chan models.LiquidityPool)
+				for _, lp := range pools {
+					go func(lp models.LiquidityPool) {
+						if (lp.FirstCoinId == firstCoinId && lp.SecondCoinId == secondCoinId) || (lp.FirstCoinId == secondCoinId && lp.SecondCoinId == firstCoinId) {
+							pchan <- lp
+						}
+					}(lp)
+				}
+
+				p := <-pchan
+
+				if firstCoinId == p.FirstCoinId {
+					currentPairs = append(currentPairs, NewPair(
+						NewTokenAmount(NewToken(p.FirstCoinId), str2bigint(p.FirstCoinVolume)),
+						NewTokenAmount(NewToken(p.SecondCoinId), str2bigint(p.SecondCoinVolume)),
+					))
+				} else {
+					currentPairs = append(currentPairs, NewPair(
+						NewTokenAmount(NewToken(p.SecondCoinId), str2bigint(p.SecondCoinVolume)),
+						NewTokenAmount(NewToken(p.FirstCoinId), str2bigint(p.FirstCoinVolume)),
+					))
+				}
+			}
+
+			pairs = append(pairs, currentPairs)
+		}(path, wg)
+	}
+	wg.Wait()
+
+	return pairs, nil
 }
