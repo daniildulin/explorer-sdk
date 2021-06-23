@@ -103,12 +103,7 @@ func (s *Service) FindSwapRoutePathsByGraph(pools []models.LiquidityPool, fromCo
 	return result, nil
 }
 
-func (s *Service) GetPossiblePaths(pools []models.LiquidityPool, fromCoinId, toCoinId uint64, depth int, topN int) ([][]Pair, error) {
-	paths, err := s.FindSwapRoutePathsByGraph(pools, fromCoinId, toCoinId, depth, topN)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *Service) GetPossiblePaths(paths [][]goraph.ID, pools []models.LiquidityPool, fromCoinId, toCoinId uint64, depth int, topN int) ([][]Pair, error) {
 	pairs := make([][]Pair, 0)
 	wg := &sync.WaitGroup{}
 	for _, path := range paths {
