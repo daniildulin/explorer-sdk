@@ -2,6 +2,7 @@ package swap
 
 import (
 	"errors"
+	"fmt"
 	"github.com/MinterTeam/minter-explorer-extender/v2/models"
 	"github.com/go-pg/pg/v10"
 	"github.com/starwander/goraph"
@@ -103,7 +104,7 @@ func (s *Service) FindSwapRoutePathsByGraph(pools []models.LiquidityPool, fromCo
 	return result, nil
 }
 
-func (s *Service) GetPossiblePaths(paths [][]goraph.ID, pools []models.LiquidityPool, fromCoinId, toCoinId uint64, depth int, topN int) ([][]Pair, error) {
+func (s *Service) MakePairsFromPaths(paths [][]goraph.ID, pools *sync.Map) ([][]Pair, error) {
 	pairs := make([][]Pair, 0)
 	wg := &sync.WaitGroup{}
 	for _, path := range paths {
@@ -122,16 +123,12 @@ func (s *Service) GetPossiblePaths(paths [][]goraph.ID, pools []models.Liquidity
 				}
 
 				firstCoinId, secondCoinId := path[i-1].(uint64), path[i].(uint64)
-				pchan := make(chan models.LiquidityPool)
-				for _, lp := range pools {
-					go func(lp models.LiquidityPool) {
-						if (lp.FirstCoinId == firstCoinId && lp.SecondCoinId == secondCoinId) || (lp.FirstCoinId == secondCoinId && lp.SecondCoinId == firstCoinId) {
-							pchan <- lp
-						}
-					}(lp)
+				pdata, ok := pools.Load(fmt.Sprintf("%d-%d", firstCoinId, secondCoinId))
+				if !ok {
+					pdata, ok = pools.Load(fmt.Sprintf("%d-%d", secondCoinId, firstCoinId))
 				}
 
-				p := <-pchan
+				p := pdata.(*models.LiquidityPool)
 
 				if firstCoinId == p.FirstCoinId {
 					currentPairs = append(currentPairs, NewPair(
