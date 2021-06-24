@@ -2,6 +2,7 @@ package swap
 
 import (
 	"errors"
+	"github.com/MinterTeam/minter-explorer-api/v2/helpers"
 	"github.com/MinterTeam/minter-explorer-extender/v2/models"
 	"github.com/go-pg/pg/v10"
 	"github.com/starwander/goraph"
@@ -21,8 +22,9 @@ func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.Liquid
 		return getVolumeInBip(big.NewFloat(2), p.FirstCoinVolume)
 	}
 
-	currentVolume := p.FirstCoinVolume
+	minliquidity, _ := new(big.Int).SetString("5000000000000000000000", 10)
 
+	currentVolume := p.FirstCoinVolume
 	paths, err := s.FindSwapRoutePathsByGraph(pools, p.FirstCoinId, uint64(0), 4)
 	if err != nil {
 		paths, err = s.FindSwapRoutePathsByGraph(pools, p.SecondCoinId, uint64(0), 4)
@@ -53,6 +55,11 @@ func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.Liquid
 					price = cprice
 				} else {
 					price.Mul(price, cprice)
+				}
+
+				if pool.FirstCoinId == 0 && helpers.StringToBigInt(pool.FirstCoinVolume).Cmp(minliquidity) == -1 {
+					price = big.NewFloat(0)
+					break
 				}
 
 				break
