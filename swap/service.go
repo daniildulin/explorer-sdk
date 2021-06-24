@@ -128,7 +128,7 @@ func (s *Service) MakePairsFromPaths(paths [][]goraph.ID, pools *sync.Map) ([][]
 					pdata, ok = pools.Load(fmt.Sprintf("%d-%d", secondCoinId, firstCoinId))
 				}
 
-				p := pdata.(*models.LiquidityPool)
+				p := pdata.(models.LiquidityPool)
 
 				if firstCoinId == p.FirstCoinId {
 					currentPairs = append(currentPairs, NewPair(
