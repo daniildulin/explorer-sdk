@@ -22,7 +22,7 @@ func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.Liquid
 		return getVolumeInBip(big.NewFloat(2), p.FirstCoinVolume)
 	}
 
-	minliquidity, _ := new(big.Int).SetString("5000000000000000000000", 10)
+	minliquidity, _ := new(big.Int).SetString("20000000000000000000000", 10)
 
 	currentVolume := p.FirstCoinVolume
 	paths, err := s.FindSwapRoutePathsByGraph(pools, p.FirstCoinId, uint64(0), 4)
