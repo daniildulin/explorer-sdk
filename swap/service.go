@@ -25,9 +25,9 @@ func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.Liquid
 	minliquidity, _ := new(big.Int).SetString("50000000000000000000000", 10)
 
 	currentVolume := p.FirstCoinVolume
-	paths, err := s.FindSwapRoutePathsByGraph(pools, p.FirstCoinId, uint64(0), 4)
+	paths, err := s.FindSwapRoutePathsByGraph(pools, p.FirstCoinId, uint64(0), 4, 20)
 	if err != nil {
-		paths, err = s.FindSwapRoutePathsByGraph(pools, p.SecondCoinId, uint64(0), 4)
+		paths, err = s.FindSwapRoutePathsByGraph(pools, p.SecondCoinId, uint64(0), 4, 20)
 		if err != nil {
 			return big.NewFloat(0)
 		}
@@ -71,7 +71,7 @@ func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.Liquid
 	return liquidity.Mul(liquidity, big.NewFloat(2))
 }
 
-func (s *Service) FindSwapRoutePathsByGraph(pools []models.LiquidityPool, fromCoinId, toCoinId uint64, depth int) ([][]goraph.ID, error) {
+func (s *Service) FindSwapRoutePathsByGraph(pools []models.LiquidityPool, fromCoinId, toCoinId uint64, depth int, topk int) ([][]goraph.ID, error) {
 	graph := goraph.NewGraph()
 	for _, pool := range pools {
 		graph.AddVertex(pool.FirstCoinId, pool.FirstCoin)
@@ -80,7 +80,7 @@ func (s *Service) FindSwapRoutePathsByGraph(pools []models.LiquidityPool, fromCo
 		graph.AddEdge(pool.SecondCoinId, pool.FirstCoinId, 1, nil)
 	}
 
-	_, paths, err := graph.Yen(fromCoinId, toCoinId, 20)
+	_, paths, err := graph.Yen(fromCoinId, toCoinId, topk)
 	if err != nil {
 		return nil, err
 	}
