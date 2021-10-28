@@ -2,7 +2,6 @@ package swap
 
 import (
 	"errors"
-	"github.com/MinterTeam/minter-explorer-api/v2/helpers"
 	"github.com/MinterTeam/minter-explorer-extender/v2/models"
 	"github.com/go-pg/pg/v10"
 	"github.com/starwander/goraph"
@@ -17,17 +16,22 @@ func NewService(db *pg.DB) *Service {
 	return &Service{db}
 }
 
-func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.LiquidityPool) *big.Float {
+func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.LiquidityPool, trackedCoinIds []uint64) *big.Float {
 	if p.FirstCoinId == 0 {
 		return getVolumeInBip(big.NewFloat(2), p.FirstCoinVolume)
 	}
 
-	minliquidity, _ := new(big.Int).SetString("50000000000000000000000", 10)
+	var trackedPools []models.LiquidityPool
+	for _, p := range pools {
+		if inArray(p.FirstCoinId, trackedCoinIds) || inArray(p.SecondCoinId, trackedCoinIds) {
+			trackedPools = append(trackedPools, p)
+		}
+	}
 
 	currentVolume := p.FirstCoinVolume
-	paths, err := s.FindSwapRoutePathsByGraph(pools, p.FirstCoinId, uint64(0), 4, 20)
+	paths, err := s.FindSwapRoutePathsByGraph(trackedPools, p.FirstCoinId, uint64(0), 4, 1)
 	if err != nil {
-		paths, err = s.FindSwapRoutePathsByGraph(pools, p.SecondCoinId, uint64(0), 4, 20)
+		paths, err = s.FindSwapRoutePathsByGraph(trackedPools, p.SecondCoinId, uint64(0), 4, 1)
 		if err != nil {
 			return big.NewFloat(0)
 		}
@@ -42,7 +46,7 @@ func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.Liquid
 		secondCoinId := path[i+1].(uint64)
 		firstCoinId := path[i].(uint64)
 
-		for _, pool := range pools {
+		for _, pool := range trackedPools {
 			if (pool.FirstCoinId == firstCoinId && pool.SecondCoinId == secondCoinId) || (pool.FirstCoinId == secondCoinId && pool.SecondCoinId == firstCoinId) {
 				cprice := big.NewFloat(0)
 				if pool.FirstCoinId == firstCoinId {
@@ -55,11 +59,6 @@ func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.Liquid
 					price = cprice
 				} else {
 					price.Mul(price, cprice)
-				}
-
-				if pool.FirstCoinId == 0 && helpers.StringToBigInt(pool.FirstCoinVolume).Cmp(minliquidity) == -1 {
-					price = big.NewFloat(0)
-					break
 				}
 
 				break
