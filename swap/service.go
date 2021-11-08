@@ -21,6 +21,10 @@ func (s *Service) GetPoolLiquidity(pools []models.LiquidityPool, p models.Liquid
 		return getVolumeInBip(big.NewFloat(2), p.FirstCoinVolume)
 	}
 
+	if !inArray(p.FirstCoinId, trackedCoinIds) && !inArray(p.SecondCoinId, trackedCoinIds) {
+		return big.NewFloat(0)
+	}
+
 	var trackedPools []models.LiquidityPool
 	for _, p := range pools {
 		if inArray(p.FirstCoinId, trackedCoinIds) || inArray(p.SecondCoinId, trackedCoinIds) {
